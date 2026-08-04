@@ -20,7 +20,7 @@ C:\app\VRMtoResonitePackage\publish\ResoPon.exe
 ```
 
 - VRMごとに`.resonitepackage`を生成する
-- ResoPonの標準設定を使用する
+- ResoPonの設定は一括変換前に調整し、ユーザー確認済みの設定を使用する
 - 変換に失敗したアバターは配置およびcatalogへの登録を行わない
 - 変換処理は自動化スクリプトから実行する
 
@@ -44,7 +44,12 @@ free-avatars/
 │  │  └─ thumbnail.webp
 │  └─ ...
 └─ tools/
-   └─ build.ps1
+   ├─ build.ps1
+   ├─ Invoke-ResoPon.ps1
+   ├─ Render-Thumbnails.ps1
+   ├─ Render-VrmThumbnails.py
+   ├─ Update-Catalog.ps1
+   └─ Test-Repository.ps1
 ```
 
 `<avatar-name>`には、VRMファイル名から拡張子を除いた名前を使用する。
@@ -70,6 +75,7 @@ VRMを3Dレンダリングして生成する。
 - ファイル名：`thumbnail.webp`
 - サイズ：256×256px
 - 形式：WebP
+- 品質：70
 - 全アバターで画角、背景、照明を統一する
 - モデル全体が収まるように自動調整する
 - 元VRMの内蔵サムネイルには依存しない
@@ -108,6 +114,8 @@ VRMを3Dレンダリングして生成する。
 - `thumbnail.webp`
 - `README.md`
 - スクリプト
+
+`Update-Catalog.ps1`で成果物から`catalog.json`を再生成し、`Test-Repository.ps1`でディレクトリ内容、サムネイル寸法、catalogとの一致、Git LFS属性を検証する。
 
 ## README
 
