@@ -13,11 +13,7 @@ CC0のVRMアバターをResonite用の`.resonitepackage`に変換し、サムネ
 
 ## 変換
 
-以下のローカルアプリを使用する。
-
-```text
-C:\app\VRMtoResonitePackage\publish\ResoPon.exe
-```
+ローカル環境に用意した`ResoPon.exe`を使用する。実行ファイルの場所はリポジトリへ固定せず、`Invoke-ResoPon.ps1`の`-ResoPonPath`、環境変数`RESOPON_PATH`、または`PATH`から解決する。
 
 - VRMごとに`.resonitepackage`を生成する
 - ResoPonの設定は一括変換前に調整し、ユーザー確認済みの設定を使用する

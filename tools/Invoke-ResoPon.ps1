@@ -3,7 +3,7 @@ param(
     [string] $RepositoryRoot,
     [string] $SourceRoot,
     [string] $StagingDirectory,
-    [string] $ResoPonPath = 'C:\app\VRMtoResonitePackage\publish\ResoPon.exe',
+    [string] $ResoPonPath,
     [string] $ResonitePath,
     [string[]] $AvatarName = @(),
     [string[]] $ExcludeAvatarName = @(),
@@ -32,10 +32,22 @@ if ([string]::IsNullOrWhiteSpace($StagingDirectory)) {
 
 $SourceRoot = [System.IO.Path]::GetFullPath($SourceRoot)
 $StagingDirectory = [System.IO.Path]::GetFullPath($StagingDirectory)
-$ResoPonPath = [System.IO.Path]::GetFullPath($ResoPonPath)
 
+if ([string]::IsNullOrWhiteSpace($ResoPonPath)) {
+    $ResoPonPath = [System.Environment]::GetEnvironmentVariable('RESOPON_PATH', 'Process')
+}
+if ([string]::IsNullOrWhiteSpace($ResoPonPath)) {
+    $resoPonCommand = Get-Command 'ResoPon.exe' -CommandType Application -ErrorAction SilentlyContinue
+    if ($null -ne $resoPonCommand) {
+        $ResoPonPath = $resoPonCommand.Source
+    }
+}
+if ([string]::IsNullOrWhiteSpace($ResoPonPath)) {
+    throw 'ResoPon.exe was not found. Specify -ResoPonPath, set RESOPON_PATH, or add ResoPon.exe to PATH.'
+}
+$ResoPonPath = [System.IO.Path]::GetFullPath($ResoPonPath)
 if (-not (Test-Path -LiteralPath $ResoPonPath -PathType Leaf)) {
-    throw "ResoPon.exe was not found: $ResoPonPath"
+    throw "ResoPon.exe was not found at the configured path: $ResoPonPath"
 }
 if (-not (Test-Path -LiteralPath $SourceRoot -PathType Container)) {
     throw "Source directory was not found: $SourceRoot"

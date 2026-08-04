@@ -48,11 +48,13 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools/Update-Catalog.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File tools/Test-Repository.ps1
 ```
 
-ResoPonによるパッケージ変換は、まず`.work/staging/packages/`へ出力します。既存の正常な出力はスキップされます。
+ResoPonによるパッケージ変換は、まず`.work/staging/packages/`へ出力します。既存の正常な出力はスキップされます。ResoPonの場所は引数で指定します。
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File tools/Invoke-ResoPon.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File tools/Invoke-ResoPon.ps1 -ResoPonPath "C:\path\to\ResoPon.exe"
 ```
+
+毎回同じ場所を使用する場合は、環境変数`RESOPON_PATH`へ設定できます。`ResoPon.exe`が`PATH`上にある場合は指定不要です。
 
 サムネイルはBlenderで256×256pxのWebP（品質70）として`.work/staging/thumbnails/`へ生成します。
 
