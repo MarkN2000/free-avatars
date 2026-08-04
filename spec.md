@@ -2,7 +2,7 @@
 
 ## 目的
 
-CC0のVRMアバターをResonite用の`.resonitepackage`に変換し、サムネイルとともにGitHubで配布する。
+CC0のVRMアバターをResonite用の`.resonitepackage`に変換し、サムネイルとともに配布する。GitHubリポジトリを成果物の正本および更新起点とし、一般利用者への配信にはCloudflare R2を使用する。
 
 ## 入力
 
@@ -29,6 +29,9 @@ free-avatars/
 ├─ catalog.json
 ├─ .gitattributes
 ├─ .gitignore
+├─ .github/
+│  └─ workflows/
+│     └─ deploy-r2.yml
 ├─ .work/
 │  ├─ sources/
 │  │  └─ PolygonalMind-100Avatars-v24.02.1/
@@ -44,6 +47,7 @@ free-avatars/
    ├─ Invoke-ResoPon.ps1
    ├─ Render-Thumbnails.ps1
    ├─ Render-VrmThumbnails.py
+   ├─ Publish-R2.ps1
    ├─ Update-Catalog.ps1
    └─ Test-Repository.ps1
 ```
@@ -96,6 +100,64 @@ VRMを3Dレンダリングして生成する。
 - UTF-8で保存する
 - クレジット、ID、ライセンス、ハッシュ、ファイルサイズなどは含めない
 
+## 公開・配信
+
+Cloudflare R2の公開バケットへ、次の成果物だけをリポジトリと同じ相対パスで配置する。
+
+```text
+catalog.json
+avatars/<avatar-name>/avatar.resonitepackage
+avatars/<avatar-name>/thumbnail.webp
+```
+
+公開URLにはCloudflareで管理するサブドメインを使用する。
+
+```text
+https://avatars.markn2000.com/catalog.json
+https://avatars.markn2000.com/avatars/<avatar-name>/avatar.resonitepackage
+https://avatars.markn2000.com/avatars/<avatar-name>/thumbnail.webp
+```
+
+- `free-avatars`という名前のR2バケットへ`avatars.markn2000.com`をカスタムドメインとして接続する
+- 本番配信に`r2.dev`、GitHub Raw、GitHub Pagesは使用しない
+- `catalog.json`内のパスは、`https://avatars.markn2000.com/catalog.json`を基準に解決する
+- R2上では`.resonitepackage`をGit LFSポインタではなく実ファイルとして配信する
+- `catalog.json`は`application/json`、`thumbnail.webp`は`image/webp`、`.resonitepackage`は`application/octet-stream`として配信する
+- `catalog.json`には`Cache-Control: no-cache`を設定し、更新確認時に再検証されるようにする
+- 外部Webサイトから取得できるよう、公開バケットのCORSで任意のオリジンからの`GET`と`HEAD`を許可する
+- 独自のキャッシュ規則は初期導入では追加せず、Cloudflareの既定動作を使用する
+
+## 自動配信
+
+GitHubの`main`ブランチを配信元とする。`avatars/`または`catalog.json`の変更が`main`へpushされたとき、GitHub ActionsからR2を更新する。初回配信や再実行には手動実行も使用できる。
+
+処理順序：
+
+1. Git LFSの実ファイルを含めてリポジトリをcheckoutする
+2. `Test-Repository.ps1`でリポジトリ内の成果物とcatalogの整合性を検証する
+3. `avatars/`が存在し、catalogが空ではなく、両者の件数が一致することを確認する
+4. R2へ`avatars/`内の全ファイルを上書きアップロードする
+5. R2の`catalog.json`を更新する
+6. GitHub側に存在しなくなった`avatars/`内のファイルをR2から削除する
+
+全成果物を毎回上書きしてGitHubを正本とし、新規ファイルをcatalogより先に配置し、削除対象をcatalog更新後に削除する。これにより、公開中のcatalogが未配置または削除済みのファイルを指す状態を避ける。
+
+- 検証またはアップロードに失敗した場合は、catalogの更新と削除処理を行わない
+- 自動削除の対象は専用R2バケット内の`avatars/`プレフィックスに限定する
+- R2への書き込み権限は対象バケットだけに限定する
+- CloudflareのアカウントID、R2アクセスキーID、R2シークレットアクセスキーはGitHub Actions Secretsに保存し、リポジトリへ記録しない
+- 初期設定後のアバター追加、更新、削除および公開作業はGitHubへのpushだけで完結させる
+
+## 導入計画
+
+1. Cloudflare R2に`free-avatars`という名前の配信用専用バケットを作成する
+2. `avatars.markn2000.com`をR2バケットのカスタムドメインとして接続する
+3. 公開アクセス、CORS、配信用Content-Typeを設定する
+4. 対象バケットだけに書き込めるR2認証情報を作成し、GitHub Actions Secretsへ登録する
+5. リポジトリ検証、成果物アップロード、catalog更新、自動削除を行うGitHub Actions workflowを追加する
+6. 初回配信後、catalog、サムネイル、パッケージを公開URLから取得できることを確認する
+7. READMEの取得先を`https://avatars.markn2000.com/catalog.json`へ変更する
+
 ## Git LFS
 
 `.resonitepackage`のみGit LFSで管理する。
@@ -110,6 +172,8 @@ VRMを3Dレンダリングして生成する。
 - `thumbnail.webp`
 - `README.md`
 - スクリプト
+
+Git LFSはGitHub上の正本管理に使用する。GitHub ActionsではLFSオブジェクトを取得し、R2へ通常のオブジェクトとしてアップロードする。
 
 `Update-Catalog.ps1`で成果物から`catalog.json`を再生成し、`Test-Repository.ps1`でディレクトリ内容、サムネイル寸法、catalogとの一致、Git LFS属性を検証する。
 
@@ -133,3 +197,7 @@ READMEには以下を記載する。
 - catalog内の全パスが実在する
 - catalogに重複や未生成アバターがない
 - すべての`.resonitepackage`がGit LFS管理されている
+- GitHub Actionsの検証に成功した成果物だけがR2へ配信される
+- `https://avatars.markn2000.com/catalog.json`を取得できる
+- catalog内の`path`と`thumbnail`を公開URL基準で解決して取得できる
+- 配信完了後のR2上の`avatars/`がGitHubリポジトリの内容と一致する

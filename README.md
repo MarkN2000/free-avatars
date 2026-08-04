@@ -15,11 +15,13 @@ avatars/<avatar-name>/thumbnail.webp
 
 利用するアバターの`avatar.resonitepackage`をダウンロードし、Resoniteへインポートしてください。
 
-ルートの`catalog.json`には、配布可能なアバターのパッケージとサムネイルの相対パスを収録しています。GitHub APIやGitHub Pagesを使わずに取得する場合は、次のRaw URLを使用できます。
+ルートの`catalog.json`には、配布可能なアバターのパッケージとサムネイルの相対パスを収録しています。公開データはCloudflare R2から取得できます。
 
 ```text
-https://raw.githubusercontent.com/MarkN2000/free-avatars/<branch>/catalog.json
+https://avatars.markn2000.com/catalog.json
 ```
+
+`path`と`thumbnail`は、このcatalog URLを基準に解決してください。
 
 ## クレジットと権利
 
@@ -69,3 +71,13 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1
 ```
 
 変換手順の詳細は[spec.md](spec.md)を参照してください。
+
+## 公開
+
+GitHubの`main`ブランチを成果物の正本とします。`avatars/`または`catalog.json`を更新してpushすると、GitHub Actionsが内容を検証し、Cloudflare R2の`free-avatars`バケットへ自動反映します。GitHubから削除されたアバターは、catalog更新後にR2からも削除されます。
+
+初回設定では、`avatars.markn2000.com`をR2バケットへ接続し、次のGitHub Actions Secretsを登録します。
+
+- `CLOUDFLARE_ACCOUNT_ID`
+- `R2_ACCESS_KEY_ID`
+- `R2_SECRET_ACCESS_KEY`
