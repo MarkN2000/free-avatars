@@ -110,8 +110,8 @@ Write-Host "Uploading all avatar packages to R2 bucket '$BucketName'..."
 Invoke-Aws -Arguments @(
     's3', 'cp', $avatarsPath, $avatarsDestination,
     '--recursive',
-    '--exclude', '*',
-    '--include', '*.resonitepackage',
+    '--exclude=*',
+    '--include=*.resonitepackage',
     '--content-type', 'application/octet-stream',
     '--no-guess-mime-type',
     '--only-show-errors',
@@ -122,8 +122,8 @@ Write-Host "Uploading all thumbnails to R2 bucket '$BucketName'..."
 Invoke-Aws -Arguments @(
     's3', 'cp', $avatarsPath, $avatarsDestination,
     '--recursive',
-    '--exclude', '*',
-    '--include', '*.webp',
+    '--exclude=*',
+    '--include=*.webp',
     '--content-type', 'image/webp',
     '--no-guess-mime-type',
     '--only-show-errors',
