@@ -16,7 +16,19 @@ CC0のVRMアバターをResonite用の`.resonitepackage`に変換し、サムネ
 ローカル環境に用意した`ResoPon.exe`を使用する。実行ファイルの場所はリポジトリへ固定せず、`Invoke-ResoPon.ps1`の`-ResoPonPath`、環境変数`RESOPON_PATH`、または`PATH`から解決する。
 
 - VRMごとに`.resonitepackage`を生成する
-- ResoPonの設定は一括変換前に調整し、ユーザー確認済みの設定を使用する
+- アバターセットアップを有効にする
+- Face Trackingを無効にする
+- SimpleAvatarProtectionを無効にする
+- Expression Menuを有効にする
+- DefaultUserScaleを有効にし、DefaultScaleを`1`にする
+- View Forwardを`0.1m`にする
+- View Upを`0.1m`にする
+- Near Clipを`0.14m`にする
+- MToon Transparent材質は既定のCutoutとして変換する
+- モデルインポートのタイムアウトを300秒にする
+- 作業用一時ファイルを保持しない
+- 親フォルダ名が`_Voxel`で終わるVRMだけ、すべてのアバターテクスチャのFilterModeをPointにする
+- Voxel以外のVRMではテクスチャのFilterModeを変更しない
 - 変換に失敗したアバターは配置およびcatalogへの登録を行わない
 - 変換処理は自動化スクリプトから実行する
 
@@ -54,6 +66,8 @@ free-avatars/
 
 `<avatar-name>`には、VRMファイル名から拡張子を除いた名前を使用する。
 
+Resoniteパッケージのファイル名は、すべてのアバターで`avatar.resonitepackage`に固定する。再変換や更新でもこの名前を維持し、元VRM名やアバター名をパッケージのファイル名には使用しない。アバターの識別には親フォルダの`<avatar-name>`を使用する。
+
 ## 作業フォルダ
 
 `.work/`は変換処理専用のローカル作業フォルダとする。
@@ -87,7 +101,7 @@ VRMを3Dレンダリングして生成する。
 ```json
 [
   {"path":"avatars/100Avatars_001_Crimsom/avatar.resonitepackage","thumbnail":"avatars/100Avatars_001_Crimsom/thumbnail.webp"},
-  {"path":"avatars/100Avatars_001_Voxel/avatar.resonitepackage","thumbnail":"avatars/100Avatars_001_Voxel/thumbnail.webp"}
+  {"path":"avatars/001_Crimson/avatar.resonitepackage","thumbnail":"avatars/001_Crimson/thumbnail.webp"}
 ]
 ```
 
@@ -96,7 +110,9 @@ VRMを3Dレンダリングして生成する。
 - リポジトリルート基準の相対パスを使用する
 - 区切り文字は`/`を使用する
 - `path`の重複を禁止する
-- `path`の昇順で並べる
+- 通常アバターを先、Voxelアバターを後に並べる
+- 各グループ内は`path`の昇順で並べる
+- 現在のPolygonalMind由来データでは、フォルダ名が`3桁の番号_`で始まるものをVoxelアバターとして扱う
 - UTF-8で保存する
 - クレジット、ID、ライセンス、ハッシュ、ファイルサイズなどは含めない
 

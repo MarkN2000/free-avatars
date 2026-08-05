@@ -113,58 +113,98 @@ if ($pending.Count -eq 0) {
 
 $timestamp = Get-Date -Format 'yyyyMMdd_HHmmss'
 $failedAvatars = @()
+$failedBatches = @()
 $previousNoPause = [System.Environment]::GetEnvironmentVariable('RESOPON_NOPAUSE', 'Process')
 [System.Environment]::SetEnvironmentVariable('RESOPON_NOPAUSE', '1', 'Process')
 
+$conversionGroups = @(
+    [pscustomobject]@{
+        Name = 'standard'
+        PointFilterTextures = $false
+        Vrms = @($pending | Where-Object { $_.Directory.Name -notlike '*_Voxel' })
+    }
+    [pscustomobject]@{
+        Name = 'voxel'
+        PointFilterTextures = $true
+        Vrms = @($pending | Where-Object { $_.Directory.Name -like '*_Voxel' })
+    }
+) | Where-Object { $_.Vrms.Count -gt 0 }
+
+$classifiedCount = ($conversionGroups | ForEach-Object { $_.Vrms.Count } | Measure-Object -Sum).Sum
+if ($classifiedCount -ne $pending.Count) {
+    throw "VRM classification failed. Pending: $($pending.Count), classified: $classifiedCount."
+}
+
+Write-Host ("Conversion groups: standard={0}, voxel={1}." -f
+    @($pending | Where-Object { $_.Directory.Name -notlike '*_Voxel' }).Count,
+    @($pending | Where-Object { $_.Directory.Name -like '*_Voxel' }).Count)
+
 try {
-    for ($offset = 0; $offset -lt $pending.Count; $offset += $BatchSize) {
-        $lastIndex = [System.Math]::Min($offset + $BatchSize - 1, $pending.Count - 1)
-        $batch = @($pending[$offset..$lastIndex])
-        $batchNumber = [int] ($offset / $BatchSize) + 1
-        $batchLog = Join-Path $logsDirectory ("resopon_{0}_batch{1:D3}.log" -f $timestamp, $batchNumber)
+    foreach ($group in $conversionGroups) {
+        for ($offset = 0; $offset -lt $group.Vrms.Count; $offset += $BatchSize) {
+            $lastIndex = [System.Math]::Min($offset + $BatchSize - 1, $group.Vrms.Count - 1)
+            $batch = @($group.Vrms[$offset..$lastIndex])
+            $batchNumber = [int] ($offset / $BatchSize) + 1
+            $batchLog = Join-Path $logsDirectory ("resopon_{0}_{1}_batch{2:D3}.log" -f $timestamp, $group.Name, $batchNumber)
 
-        $arguments = @($batch.FullName)
-        $arguments += @(
-            '--output', $StagingDirectory,
-            '--no-protection',
-            '--default-user-scale',
-            '--near-clip', '0.075',
-            '--import-timeout', '300'
-        )
-        if (-not [string]::IsNullOrWhiteSpace($ResonitePath)) {
-            $arguments += @('--resonite-path', [System.IO.Path]::GetFullPath($ResonitePath))
-        }
-
-        Write-Host ("Converting batch {0}: {1} VRM(s)..." -f $batchNumber, $batch.Count)
-        $previousErrorActionPreference = $ErrorActionPreference
-        try {
-            # Windows PowerShell wraps native stderr as ErrorRecord objects. ResoPon writes
-            # engine diagnostics there even on success, so capture them as ordinary log text.
-            $ErrorActionPreference = 'Continue'
-            & $ResoPonPath @arguments 2>&1 |
-                ForEach-Object { if ($_ -is [System.Management.Automation.ErrorRecord]) { $_.Exception.Message } else { $_ } } |
-                Tee-Object -FilePath $batchLog
-            $exitCode = $LASTEXITCODE
-        }
-        finally {
-            $ErrorActionPreference = $previousErrorActionPreference
-        }
-
-        $missingOutputs = @()
-        foreach ($vrm in $batch) {
-            $outputPath = Join-Path $StagingDirectory ($vrm.BaseName + '.resonitepackage')
-            if (-not (Test-Path -LiteralPath $outputPath -PathType Leaf) -or (Get-Item -LiteralPath $outputPath).Length -eq 0) {
-                $missingOutputs += $vrm.BaseName
+            if ($Force) {
+                foreach ($vrm in $batch) {
+                    $previousOutput = Join-Path $StagingDirectory ($vrm.BaseName + '.resonitepackage')
+                    if (Test-Path -LiteralPath $previousOutput -PathType Leaf) {
+                        Remove-Item -LiteralPath $previousOutput -Force
+                    }
+                }
             }
-        }
 
-        if ($exitCode -ne 0 -or $missingOutputs.Count -gt 0) {
-            $failureMessage = "ResoPon batch $batchNumber failed (exit $exitCode). Missing outputs: $($missingOutputs -join ', '). Log: $batchLog"
-            if (-not $ContinueOnError) {
-                throw $failureMessage
+            $arguments = @($batch.FullName)
+            $arguments += @(
+                '--output', $StagingDirectory,
+                '--no-protection',
+                '--default-user-scale',
+                '--view-forward', '0.1',
+                '--view-up', '0.1',
+                '--near-clip', '0.14',
+                '--import-timeout', '300'
+            )
+            if ($group.PointFilterTextures) {
+                $arguments += '--point-filter-textures'
             }
-            $failedAvatars += $missingOutputs
-            Write-Warning $failureMessage
+            if (-not [string]::IsNullOrWhiteSpace($ResonitePath)) {
+                $arguments += @('--resonite-path', [System.IO.Path]::GetFullPath($ResonitePath))
+            }
+
+            Write-Host ("Converting {0} batch {1}: {2} VRM(s)..." -f $group.Name, $batchNumber, $batch.Count)
+            $previousErrorActionPreference = $ErrorActionPreference
+            try {
+                # Windows PowerShell wraps native stderr as ErrorRecord objects. ResoPon writes
+                # engine diagnostics there even on success, so capture them as ordinary log text.
+                $ErrorActionPreference = 'Continue'
+                & $ResoPonPath @arguments 2>&1 |
+                    ForEach-Object { if ($_ -is [System.Management.Automation.ErrorRecord]) { $_.Exception.Message } else { $_ } } |
+                    Tee-Object -FilePath $batchLog
+                $exitCode = $LASTEXITCODE
+            }
+            finally {
+                $ErrorActionPreference = $previousErrorActionPreference
+            }
+
+            $missingOutputs = @()
+            foreach ($vrm in $batch) {
+                $outputPath = Join-Path $StagingDirectory ($vrm.BaseName + '.resonitepackage')
+                if (-not (Test-Path -LiteralPath $outputPath -PathType Leaf) -or (Get-Item -LiteralPath $outputPath).Length -eq 0) {
+                    $missingOutputs += $vrm.BaseName
+                }
+            }
+
+            if ($exitCode -ne 0 -or $missingOutputs.Count -gt 0) {
+                $failureMessage = "ResoPon $($group.Name) batch $batchNumber failed (exit $exitCode). Missing outputs: $($missingOutputs -join ', '). Log: $batchLog"
+                if (-not $ContinueOnError) {
+                    throw $failureMessage
+                }
+                $failedBatches += "$($group.Name)/$batchNumber (exit $exitCode)"
+                $failedAvatars += $missingOutputs
+                Write-Warning $failureMessage
+            }
         }
     }
 }
@@ -172,8 +212,8 @@ finally {
     [System.Environment]::SetEnvironmentVariable('RESOPON_NOPAUSE', $previousNoPause, 'Process')
 }
 
-if ($failedAvatars.Count -gt 0) {
-    throw "ResoPon conversion finished with failed avatars: $($failedAvatars -join ', ')"
+if ($failedBatches.Count -gt 0) {
+    throw "ResoPon conversion finished with failed batches: $($failedBatches -join ', '). Missing avatars: $($failedAvatars -join ', ')"
 }
 
 Write-Host ("ResoPon conversion complete: {0} converted, {1} skipped." -f $pending.Count, $skipped)

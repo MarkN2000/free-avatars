@@ -16,7 +16,10 @@ $catalogPath = Join-Path $repositoryRootPath 'catalog.json'
 
 $avatarDirectories = @()
 if (Test-Path -LiteralPath $avatarsPath -PathType Container) {
-    $avatarDirectories = @(Get-ChildItem -LiteralPath $avatarsPath -Directory | Sort-Object Name)
+    $avatarDirectories = @(
+        Get-ChildItem -LiteralPath $avatarsPath -Directory |
+            Sort-Object @{ Expression = { if ($_.Name -match '^\d{3}_') { 1 } else { 0 } } }, Name
+    )
 }
 
 $entries = @()
