@@ -7,11 +7,11 @@ CC0で公開されているVRMアバターをResonite用の`.resonitepackage`に
 各アバターは次の2ファイルで構成します。
 
 ```text
-avatars/<avatar-name>/avatar.resonitepackage
-avatars/<avatar-name>/thumbnail.webp
+avatars/<avatar-name>/<package-hash>/avatar.resonitepackage
+avatars/<avatar-name>/<package-hash>/thumbnail.webp
 ```
 
-`thumbnail.webp`はVRMをレンダリングして生成した256×256pxの画像です。
+`<package-hash>`はパッケージ内容のSHA-256の先頭8文字です。パッケージを更新するとパスが変わるため、同じURLを再取得しないクライアントでも新しい成果物を取得できます。`thumbnail.webp`はVRMをレンダリングして生成した256×256pxの画像です。
 
 利用するアバターの`avatar.resonitepackage`をダウンロードし、Resoniteへインポートしてください。
 
@@ -69,6 +69,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools/Render-Thumbnails.ps1
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1
 ```
+
+既存アバターを更新するときは`-Force`を付け、古いハッシュフォルダを新しいものへ置き換えます。
 
 変換手順の詳細は[spec.md](spec.md)を参照してください。
 

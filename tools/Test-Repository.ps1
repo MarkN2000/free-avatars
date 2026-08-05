@@ -97,22 +97,38 @@ if (Test-Path -LiteralPath $avatarsPath -PathType Container) {
 foreach ($directory in $avatarDirectories) {
     $files = @(Get-ChildItem -LiteralPath $directory.FullName -File)
     $subdirectories = @(Get-ChildItem -LiteralPath $directory.FullName -Directory)
-    $unexpectedFiles = @($files | Where-Object Name -notin @('avatar.resonitepackage', 'thumbnail.webp'))
-    if ($subdirectories.Count -ne 0 -or $unexpectedFiles.Count -ne 0 -or $files.Count -ne 2) {
-        throw "Avatar directory must contain only avatar.resonitepackage and thumbnail.webp: $($directory.FullName)"
+    if ($files.Count -ne 0 -or $subdirectories.Count -ne 1) {
+        throw "Avatar directory must contain exactly one package hash directory and no files: $($directory.FullName)"
     }
 
-    $package = Get-Item -LiteralPath (Join-Path $directory.FullName 'avatar.resonitepackage')
-    $thumbnail = Get-Item -LiteralPath (Join-Path $directory.FullName 'thumbnail.webp')
+    $hashDirectory = $subdirectories[0]
+    if ($hashDirectory.Name -notmatch '^[0-9a-f]{8}$') {
+        throw "Package hash directory must be the first 8 lowercase characters of a SHA-256 value: $($hashDirectory.FullName)"
+    }
+
+    $hashFiles = @(Get-ChildItem -LiteralPath $hashDirectory.FullName -File)
+    $hashSubdirectories = @(Get-ChildItem -LiteralPath $hashDirectory.FullName -Directory)
+    $unexpectedHashFiles = @($hashFiles | Where-Object Name -notin @('avatar.resonitepackage', 'thumbnail.webp'))
+    if ($hashSubdirectories.Count -ne 0 -or $unexpectedHashFiles.Count -ne 0 -or $hashFiles.Count -ne 2) {
+        throw "Package hash directory must contain only avatar.resonitepackage and thumbnail.webp: $($hashDirectory.FullName)"
+    }
+
+    $package = Get-Item -LiteralPath (Join-Path $hashDirectory.FullName 'avatar.resonitepackage')
+    $thumbnail = Get-Item -LiteralPath (Join-Path $hashDirectory.FullName 'thumbnail.webp')
     if ($package.Length -eq 0) { throw "Package is empty: $($package.FullName)" }
     if ($thumbnail.Length -eq 0) { throw "Thumbnail is empty: $($thumbnail.FullName)" }
+
+    $packageHash = (Get-FileHash -LiteralPath $package.FullName -Algorithm SHA256).Hash.ToLowerInvariant().Substring(0, 8)
+    if ($hashDirectory.Name -cne $packageHash) {
+        throw "Package hash directory does not match the package content: $($hashDirectory.FullName)"
+    }
 
     $dimensions = Get-WebPDimensions -Path $thumbnail.FullName
     if ($dimensions.Width -ne 256 -or $dimensions.Height -ne 256) {
         throw "Thumbnail must be 256x256: $($thumbnail.FullName) ($($dimensions.Width)x$($dimensions.Height))"
     }
 
-    $relativeDirectory = "avatars/$($directory.Name)"
+    $relativeDirectory = "avatars/$($directory.Name)/$($hashDirectory.Name)"
     $expectedEntries += [pscustomobject][ordered]@{
         path = "$relativeDirectory/avatar.resonitepackage"
         thumbnail = "$relativeDirectory/thumbnail.webp"
@@ -137,10 +153,13 @@ if ($actualJson -cne $expectedJson) {
 }
 
 if ($entries.Count -gt 0) {
-    $packagePaths = @($entries | ForEach-Object { Join-Path $repositoryRootPath ($_.path -replace '/', [System.IO.Path]::DirectorySeparatorChar) })
-    $attributes = @(& git -C $repositoryRootPath check-attr filter -- @packagePaths)
-    if ($LASTEXITCODE -ne 0 -or @($attributes | Where-Object { $_ -notmatch ': filter: lfs$' }).Count -ne 0) {
-        throw 'One or more .resonitepackage files are not covered by Git LFS.'
+    $packagePaths = @($entries | ForEach-Object { [string] $_.path })
+    for ($offset = 0; $offset -lt $packagePaths.Count; $offset += 50) {
+        $batch = @($packagePaths | Select-Object -Skip $offset -First 50)
+        $attributes = @(& git -C $repositoryRootPath check-attr filter -- @batch)
+        if ($LASTEXITCODE -ne 0 -or @($attributes | Where-Object { $_ -notmatch ': filter: lfs$' }).Count -ne 0) {
+            throw 'One or more .resonitepackage files are not covered by Git LFS.'
+        }
     }
 }
 

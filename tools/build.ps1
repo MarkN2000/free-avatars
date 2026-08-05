@@ -61,8 +61,10 @@ $skipped = 0
 
 foreach ($package in $packages) {
     $avatarDirectory = Join-Path $avatarsDirectory $package.BaseName
-    $targetPackage = Join-Path $avatarDirectory 'avatar.resonitepackage'
-    $targetThumbnail = Join-Path $avatarDirectory 'thumbnail.webp'
+    $packageHash = (Get-FileHash -LiteralPath $package.FullName -Algorithm SHA256).Hash.ToLowerInvariant().Substring(0, 8)
+    $hashDirectory = Join-Path $avatarDirectory $packageHash
+    $targetPackage = Join-Path $hashDirectory 'avatar.resonitepackage'
+    $targetThumbnail = Join-Path $hashDirectory 'thumbnail.webp'
 
     if ((Test-Path -LiteralPath $avatarDirectory) -and -not $Force) {
         if ((Test-Path -LiteralPath $targetPackage -PathType Leaf) -and
@@ -73,7 +75,16 @@ foreach ($package in $packages) {
         throw "Incomplete avatar directory already exists; use -Force after inspection: $avatarDirectory"
     }
 
-    New-Item -ItemType Directory -Path $avatarDirectory -Force | Out-Null
+    if ((Test-Path -LiteralPath $avatarDirectory) -and $Force) {
+        $avatarDirectoryPath = [System.IO.Path]::GetFullPath($avatarDirectory)
+        $avatarParentPath = [System.IO.Path]::GetFullPath((Split-Path -Parent $avatarDirectoryPath))
+        if (-not [System.StringComparer]::OrdinalIgnoreCase.Equals($avatarParentPath, $avatarsDirectory)) {
+            throw "Refusing to replace an avatar directory outside avatars/: $avatarDirectoryPath"
+        }
+        Remove-Item -LiteralPath $avatarDirectoryPath -Recurse -Force
+    }
+
+    New-Item -ItemType Directory -Path $hashDirectory -Force | Out-Null
     Copy-Item -LiteralPath $package.FullName -Destination $targetPackage -Force
     Copy-Item -LiteralPath $thumbnailByName[$package.BaseName].FullName -Destination $targetThumbnail -Force
     $copied++
