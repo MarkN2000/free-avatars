@@ -23,7 +23,7 @@ CC0のVRMアバターをResonite用の`.resonitepackage`に変換し、サムネ
 - DefaultUserScaleを有効にし、DefaultScaleを`1`にする
 - First Person Visibilityを無効にする
 - Avatar Loading Displayを無効にする
-- View Forwardを`0.1m`にする
+- View Forwardを`0.18m`にする
 - View Upを`0.1m`にする
 - Near Clipを`0.14m`にする
 - MToon Transparent材質は既定のCutoutとして変換する
