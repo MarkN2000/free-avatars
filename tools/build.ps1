@@ -62,9 +62,8 @@ $skipped = 0
 foreach ($package in $packages) {
     $avatarDirectory = Join-Path $avatarsDirectory $package.BaseName
     $packageHash = (Get-FileHash -LiteralPath $package.FullName -Algorithm SHA256).Hash.ToLowerInvariant().Substring(0, 8)
-    $hashDirectory = Join-Path $avatarDirectory $packageHash
-    $targetPackage = Join-Path $hashDirectory 'avatar.resonitepackage'
-    $targetThumbnail = Join-Path $hashDirectory 'thumbnail.webp'
+    $targetPackage = Join-Path $avatarDirectory "$($package.BaseName).$packageHash.resonitepackage"
+    $targetThumbnail = Join-Path $avatarDirectory 'thumbnail.webp'
 
     if ((Test-Path -LiteralPath $avatarDirectory) -and -not $Force) {
         if ((Test-Path -LiteralPath $targetPackage -PathType Leaf) -and
@@ -84,7 +83,7 @@ foreach ($package in $packages) {
         Remove-Item -LiteralPath $avatarDirectoryPath -Recurse -Force
     }
 
-    New-Item -ItemType Directory -Path $hashDirectory -Force | Out-Null
+    New-Item -ItemType Directory -Path $avatarDirectory -Force | Out-Null
     Copy-Item -LiteralPath $package.FullName -Destination $targetPackage -Force
     Copy-Item -LiteralPath $thumbnailByName[$package.BaseName].FullName -Destination $targetThumbnail -Force
     $copied++

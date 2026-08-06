@@ -24,35 +24,29 @@ if (Test-Path -LiteralPath $avatarsPath -PathType Container) {
 
 $entries = @()
 foreach ($directory in $avatarDirectories) {
-    $rootFiles = @(Get-ChildItem -LiteralPath $directory.FullName -File)
-    $hashDirectories = @(Get-ChildItem -LiteralPath $directory.FullName -Directory)
-    if ($rootFiles.Count -ne 0 -or $hashDirectories.Count -ne 1) {
-        throw "Avatar directory must contain exactly one package hash directory and no files: $($directory.FullName)"
+    $files = @(Get-ChildItem -LiteralPath $directory.FullName -File)
+    $subdirectories = @(Get-ChildItem -LiteralPath $directory.FullName -Directory)
+    $packages = @($files | Where-Object Extension -eq '.resonitepackage')
+    $thumbnailPath = Join-Path $directory.FullName 'thumbnail.webp'
+    if ($subdirectories.Count -ne 0 -or $files.Count -ne 2 -or $packages.Count -ne 1) {
+        throw "Avatar directory must contain exactly one .resonitepackage and thumbnail.webp: $($directory.FullName)"
     }
 
-    $hashDirectory = $hashDirectories[0]
-    if ($hashDirectory.Name -notmatch '^[0-9a-f]{8}$') {
-        throw "Package hash directory must be the first 8 lowercase characters of a SHA-256 value: $($hashDirectory.FullName)"
-    }
+    $packagePath = $packages[0].FullName
 
-    $packagePath = Join-Path $hashDirectory.FullName 'avatar.resonitepackage'
-    $thumbnailPath = Join-Path $hashDirectory.FullName 'thumbnail.webp'
-
-    if (-not (Test-Path -LiteralPath $packagePath -PathType Leaf)) {
-        throw "Missing package: $packagePath"
-    }
     if (-not (Test-Path -LiteralPath $thumbnailPath -PathType Leaf)) {
         throw "Missing thumbnail: $thumbnailPath"
     }
 
     $packageHash = (Get-FileHash -LiteralPath $packagePath -Algorithm SHA256).Hash.ToLowerInvariant().Substring(0, 8)
-    if ($hashDirectory.Name -cne $packageHash) {
-        throw "Package hash directory does not match the package content: $($hashDirectory.FullName)"
+    $expectedPackageName = "$($directory.Name).$packageHash.resonitepackage"
+    if ($packages[0].Name -cne $expectedPackageName) {
+        throw "Package file name does not match the avatar name and package hash: $packagePath"
     }
 
-    $relativeDirectory = "avatars/$($directory.Name)/$($hashDirectory.Name)"
+    $relativeDirectory = "avatars/$($directory.Name)"
     $entries += [pscustomobject][ordered]@{
-        path = "$relativeDirectory/avatar.resonitepackage"
+        path = "$relativeDirectory/$expectedPackageName"
         thumbnail = "$relativeDirectory/thumbnail.webp"
     }
 }

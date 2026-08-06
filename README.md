@@ -7,13 +7,13 @@ CC0で公開されているVRMアバターをResonite用の`.resonitepackage`に
 各アバターは次の2ファイルで構成します。
 
 ```text
-avatars/<avatar-name>/<package-hash>/avatar.resonitepackage
-avatars/<avatar-name>/<package-hash>/thumbnail.webp
+avatars/<avatar-name>/<avatar-name>.<package-hash>.resonitepackage
+avatars/<avatar-name>/thumbnail.webp
 ```
 
-`<package-hash>`はパッケージ内容のSHA-256の先頭8文字です。パッケージを更新するとパスが変わるため、同じURLを再取得しないクライアントでも新しい成果物を取得できます。`thumbnail.webp`はVRMをレンダリングして生成した256×256pxの画像です。
+`<package-hash>`はパッケージ内容のSHA-256の先頭8文字です。パッケージを更新するとパッケージURLが変わるため、同じURLを再取得しないクライアントでも新しい成果物を取得できます。`thumbnail.webp`は固定URLとし、VRMをレンダリングして生成した256×256pxの画像です。
 
-利用するアバターの`avatar.resonitepackage`をダウンロードし、Resoniteへインポートしてください。
+利用するアバターの`.resonitepackage`をダウンロードし、Resoniteへインポートしてください。
 
 ルートの`catalog.json`には、配布可能なアバターのパッケージとサムネイルの相対パスを収録しています。公開データはCloudflare R2から取得できます。
 
@@ -70,7 +70,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools/Render-Thumbnails.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1
 ```
 
-既存アバターを更新するときは`-Force`を付け、古いハッシュフォルダを新しいものへ置き換えます。
+既存アバターを更新するときは`-Force`を付け、古いハッシュ付きパッケージを新しいものへ置き換えます。
 
 変換手順の詳細は[spec.md](spec.md)を参照してください。
 

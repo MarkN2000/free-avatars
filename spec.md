@@ -21,6 +21,8 @@ CC0のVRMアバターをResonite用の`.resonitepackage`に変換し、サムネ
 - SimpleAvatarProtectionを無効にする
 - Expression Menuを有効にする
 - DefaultUserScaleを有効にし、DefaultScaleを`1`にする
+- First Person Visibilityを無効にする
+- Avatar Loading Displayを無効にする
 - View Forwardを`0.1m`にする
 - View Upを`0.1m`にする
 - Near Clipを`0.14m`にする
@@ -51,9 +53,8 @@ free-avatars/
 │  └─ logs/
 ├─ avatars/
 │  ├─ <avatar-name>/
-│  │  └─ <package-hash>/
-│  │     ├─ avatar.resonitepackage
-│  │     └─ thumbnail.webp
+│  │  ├─ <avatar-name>.<package-hash>.resonitepackage
+│  │  └─ thumbnail.webp
 │  └─ ...
 └─ tools/
    ├─ build.ps1
@@ -67,9 +68,9 @@ free-avatars/
 
 `<avatar-name>`には、VRMファイル名から拡張子を除いた名前を使用する。
 
-Resoniteパッケージのファイル名は、すべてのアバターで`avatar.resonitepackage`に固定する。再変換や更新でもこの名前を維持し、元VRM名やアバター名をパッケージのファイル名には使用しない。アバターの識別には`<avatar-name>`を使用する。
+公開するResoniteパッケージのファイル名には`<avatar-name>.<package-hash>.resonitepackage`を使用する。全アバター共通の固定ファイル名は使用しない。
 
-`<package-hash>`には、`avatar.resonitepackage`の実ファイル全体から計算したSHA-256の先頭8文字を小文字で使用する。各`<avatar-name>`には現在のパッケージに対応するハッシュフォルダを1つだけ配置し、その中に`avatar.resonitepackage`と`thumbnail.webp`を置く。パッケージを更新すると両ファイルの公開パスが変わる。
+`<package-hash>`には、パッケージの実ファイル全体から計算したSHA-256の先頭8文字を小文字で使用する。パッケージを更新するとパッケージの公開URLが変わる。`thumbnail.webp`は`<avatar-name>`直下の固定パスとし、パッケージ更新時にURLを変更しない。
 
 ## 作業フォルダ
 
@@ -103,8 +104,8 @@ VRMを3Dレンダリングして生成する。
 
 ```json
 [
-  {"path":"avatars/100Avatars_001_Crimsom/<package-hash>/avatar.resonitepackage","thumbnail":"avatars/100Avatars_001_Crimsom/<package-hash>/thumbnail.webp"},
-  {"path":"avatars/001_Crimson/<package-hash>/avatar.resonitepackage","thumbnail":"avatars/001_Crimson/<package-hash>/thumbnail.webp"}
+  {"path":"avatars/100Avatars_001_Crimsom/100Avatars_001_Crimsom.<package-hash>.resonitepackage","thumbnail":"avatars/100Avatars_001_Crimsom/thumbnail.webp"},
+  {"path":"avatars/001_Crimson/001_Crimson.<package-hash>.resonitepackage","thumbnail":"avatars/001_Crimson/thumbnail.webp"}
 ]
 ```
 
@@ -116,7 +117,6 @@ VRMを3Dレンダリングして生成する。
 - 通常アバターを先、Voxelアバターを後に並べる
 - 各グループ内は`path`の昇順で並べる
 - 現在のPolygonalMind由来データでは、フォルダ名が`3桁の番号_`で始まるものをVoxelアバターとして扱う
-- `path`と`thumbnail`では同じ`<package-hash>`を使用する
 - UTF-8で保存する
 - クレジット、ID、ライセンス、ハッシュの独立フィールド、ファイルサイズなどは含めない
 
@@ -126,16 +126,16 @@ Cloudflare R2の公開バケットへ、次の成果物だけをリポジトリ�
 
 ```text
 catalog.json
-avatars/<avatar-name>/<package-hash>/avatar.resonitepackage
-avatars/<avatar-name>/<package-hash>/thumbnail.webp
+avatars/<avatar-name>/<avatar-name>.<package-hash>.resonitepackage
+avatars/<avatar-name>/thumbnail.webp
 ```
 
 公開URLにはCloudflareで管理するサブドメインを使用する。
 
 ```text
 https://avatars.markn2000.com/catalog.json
-https://avatars.markn2000.com/avatars/<avatar-name>/<package-hash>/avatar.resonitepackage
-https://avatars.markn2000.com/avatars/<avatar-name>/<package-hash>/thumbnail.webp
+https://avatars.markn2000.com/avatars/<avatar-name>/<avatar-name>.<package-hash>.resonitepackage
+https://avatars.markn2000.com/avatars/<avatar-name>/thumbnail.webp
 ```
 
 - `free-avatars`という名前のR2バケットへ`avatars.markn2000.com`をカスタムドメインとして接続する
@@ -160,7 +160,7 @@ GitHubの`main`ブランチを配信元とする。`avatars/`または`catalog.j
 5. R2の`catalog.json`を更新する
 6. GitHub側に存在しなくなった`avatars/`内のファイルをR2から削除する
 
-全成果物を毎回アップロードしてGitHubを正本とし、新しいハッシュパスのファイルをcatalogより先に配置し、古いハッシュパスをcatalog更新後に削除する。これにより、公開中のcatalogが未配置または削除済みのファイルを指す状態を避ける。
+全成果物を毎回アップロードしてGitHubを正本とし、新しいハッシュ付きパッケージをcatalogより先に配置し、古いハッシュ付きパッケージをcatalog更新後に削除する。これにより、公開中のcatalogが未配置または削除済みのファイルを指す状態を避ける。
 
 - 検証またはアップロードに失敗した場合は、catalogの更新と削除処理を行わない
 - 自動削除の対象は専用R2バケット内の`avatars/`プレフィックスに限定する
@@ -211,8 +211,8 @@ READMEには以下を記載する。
 
 ## 完了条件
 
-- 各アバターフォルダには、現在のパッケージのSHA-256先頭8文字と一致するハッシュフォルダが1つだけ存在する
-- 各ハッシュフォルダには`avatar.resonitepackage`と`thumbnail.webp`だけが存在する
+- 各アバターフォルダ直下には`<avatar-name>.<package-hash>.resonitepackage`と`thumbnail.webp`だけが存在する
+- `<package-hash>`がパッケージのSHA-256先頭8文字と一致する
 - `.resonitepackage`が正常に生成されている
 - `thumbnail.webp`が正常に表示でき、256×256pxである
 - catalog内の全パスが実在する

@@ -161,6 +161,7 @@ try {
                 '--output', $StagingDirectory,
                 '--no-protection',
                 '--default-user-scale',
+                '--no-avatar-loading-display',
                 '--view-forward', '0.1',
                 '--view-up', '0.1',
                 '--near-clip', '0.14',
