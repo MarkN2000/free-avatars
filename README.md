@@ -2,6 +2,9 @@
 
 CC0で公開されているVRMアバターをResonite用の`.resonitepackage`に変換し、サムネイルとともに配布するリポジトリです。
 
+変換結果はこちらでも公開しています
+https://markn2000.com/posts/2026-08-06-free-avatars/ 
+
 ## 収録内容
 
 各アバターは次の2ファイルで構成します。
