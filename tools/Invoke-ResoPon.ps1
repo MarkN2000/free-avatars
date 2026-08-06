@@ -162,9 +162,9 @@ try {
                 '--no-protection',
                 '--default-user-scale',
                 '--no-avatar-loading-display',
-                '--view-forward', '0.18',
+                '--view-forward', '0.1',
                 '--view-up', '0.1',
-                '--near-clip', '0.14',
+                '--near-clip', '0.1',
                 '--import-timeout', '300'
             )
             if ($group.PointFilterTextures) {
